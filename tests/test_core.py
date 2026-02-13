@@ -65,7 +65,13 @@ class TestPharoClient:
         client = PharoClient(host="example.com")
         assert client.base_url == "http://example.com:8086"
 
-    @patch.dict("os.environ", {"PHARO_SIS_HOST": "pharo.example", "PHARO_SIS_PORT": "8081"})
+    @patch.dict(
+        "os.environ",
+        {
+            "PHARO_SIS_HOST": "pharo.example",
+            "PHARO_SIS_PORT": "8081",
+        },
+    )
     def test_init_with_host_and_port_env(self):
         """Test PharoClient initialization with host and port explicitly set in environment variables."""
         client = PharoClient()

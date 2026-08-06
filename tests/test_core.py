@@ -40,7 +40,15 @@ class TestPharoClient:
         """Test PharoClient initialization."""
         client = PharoClient()
         assert client.base_url == "http://localhost:8086"
-        assert client.client.timeout.connect == 30.0
+        assert client.client.timeout.connect == 5.0
+        assert client.client.timeout.read == 30.0
+
+    @patch.dict("os.environ", {"PHARO_SIS_READ_TIMEOUT": "10"})
+    def test_init_explicit_read_timeout_overrides_env(self):
+        """Test that explicit read timeout parameter overrides environment variable."""
+        client = PharoClient()
+        assert client.client.timeout.connect == 5.0
+        assert client.client.timeout.read == 10.0
 
     def test_init_with_custom_host_port(self):
         """Test PharoClient initialization with custom host and port."""

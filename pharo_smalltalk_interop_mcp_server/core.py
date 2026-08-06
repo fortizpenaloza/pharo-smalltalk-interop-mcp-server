@@ -23,7 +23,7 @@ class PharoClient:
             port = int(os.getenv("PHARO_SIS_PORT", "8086"))
         self.base_url = f"http://{host}:{port}"
         # Connect fast, but allow a long read: a legitimate operation can take
-        # minutes on first touch, when caches are cold and the DB connection 
+        # minutes on first touch, when caches are cold and the DB connection
         # is still being established.
         self.read_timeout = float(os.getenv("PHARO_SIS_READ_TIMEOUT", "30"))
         self.client = httpx.Client(

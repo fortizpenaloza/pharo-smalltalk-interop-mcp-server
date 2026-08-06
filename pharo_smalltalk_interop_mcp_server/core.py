@@ -22,7 +22,13 @@ class PharoClient:
         if port is None:
             port = int(os.getenv("PHARO_SIS_PORT", "8086"))
         self.base_url = f"http://{host}:{port}"
-        self.client = httpx.Client(timeout=30.0)
+        # Connect fast, but allow a long read: a legitimate operation can take
+        # minutes on first touch, when caches are cold and the DB connection 
+        # is still being established.
+        self.read_timeout = float(os.getenv("PHARO_SIS_READ_TIMEOUT", "30"))
+        self.client = httpx.Client(
+            timeout=httpx.Timeout(self.read_timeout, connect=5.0)
+        )
 
     def _make_request(
         self, method: str, endpoint: str, data: dict[str, Any] | None = None
@@ -37,6 +43,25 @@ class PharoClient:
 
             response.raise_for_status()
             return response.json()
+        except httpx.ConnectTimeout:
+            return {
+                "success": False,
+                "error": (
+                    f"Could not connect to the interop server at {self.base_url} within 5s "
+                    f"— the image is not serving, or the host firewall is dropping it."
+                ),
+            }
+        except httpx.ReadTimeout:
+            return {
+                "success": False,
+                "error": (
+                    f"Client read timeout after {self.read_timeout:.0f}s. The request was "
+                    f"NOT cancelled — the image is most likely still executing it, and any "
+                    f"side effects will still complete. Raise PHARO_SIS_READ_TIMEOUT to wait "
+                    f"longer. If a trivial expression also times out, the image is blocked "
+                    f"instead (walkback or debugger open — dismiss it in the image)."
+                ),
+            }
         except httpx.RequestError as e:
             return {"success": False, "error": f"Connection error: {e}"}
         except httpx.HTTPStatusError as e:

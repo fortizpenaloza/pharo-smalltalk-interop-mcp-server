@@ -25,7 +25,7 @@ class PharoClient:
         # Connect fast, but allow a long read: a legitimate operation can take
         # minutes on first touch, when caches are cold and the DB connection
         # is still being established.
-        self.read_timeout = float(os.getenv("PHARO_SIS_READ_TIMEOUT", "600"))
+        self.read_timeout = float(os.getenv("PHARO_SIS_READ_TIMEOUT", "30"))
         self.client = httpx.Client(
             timeout=httpx.Timeout(self.read_timeout, connect=5.0)
         )

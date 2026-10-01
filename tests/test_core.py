@@ -41,7 +41,7 @@ class TestPharoClient:
         client = PharoClient()
         assert client.base_url == "http://localhost:8086"
         assert client.client.timeout.connect == 5.0
-        assert client.client.timeout.read == 30.0
+        assert client.client.timeout.read == 600.0
 
     @patch.dict("os.environ", {"PHARO_SIS_READ_TIMEOUT": "10"})
     def test_init_explicit_read_timeout_overrides_env(self):
@@ -368,6 +368,54 @@ class TestPharoClient:
         mock_client.get.assert_called_once_with(
             "http://localhost:8086/import-package",
             params={"package_name": "TestPackage", "path": "/tmp/test"},
+        )
+
+    @patch("pharo_smalltalk_interop_mcp_server.core.httpx.Client")
+    def test_import_package_passes_the_envy_report_through(self, mock_client_class):
+        """Test a failed import's message, envy_log and envy_error_lines arrive untouched."""
+        envelope = {
+            "success": False,
+            "result": {
+                "message": "TestPackage imported from: /tmp/test",
+                "envy_log": "\r\nWarning: 65   The edition of Foo>>bar ...",
+                "envy_error_lines": ["Error: 42   Something ENVY logged"],
+            },
+            "error": {
+                "class": "EmErrorReporter",
+                "description": "The load raised nothing, and ENVY logged errors while it ran.",
+                "messageText": "Error: 42   Something ENVY logged",
+            },
+        }
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = envelope
+        mock_client.get.return_value = mock_response
+        mock_client_class.return_value = mock_client
+
+        client = PharoClient()
+        result = client.import_package("TestPackage", "/tmp/test")
+
+        assert result == envelope
+
+    @patch("pharo_smalltalk_interop_mcp_server.core.httpx.Client")
+    def test_import_package_allowing_class_removal(self, mock_client_class):
+        """Test import_package forwards allow_class_removal when it is asked for."""
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {"success": True, "result": "imported"}
+        mock_client.get.return_value = mock_response
+        mock_client_class.return_value = mock_client
+
+        client = PharoClient()
+        client.import_package("TestPackage", "/tmp/test", allow_class_removal=True)
+
+        mock_client.get.assert_called_once_with(
+            "http://localhost:8086/import-package",
+            params={
+                "package_name": "TestPackage",
+                "path": "/tmp/test",
+                "allow_class_removal": "true",
+            },
         )
 
     @patch("pharo_smalltalk_interop_mcp_server.core.httpx.Client")
@@ -1068,7 +1116,22 @@ class TestInteropFunctions:
         result = interop_import_package("TestPackage", "/tmp/test")
 
         assert result == {"success": True, "result": "imported"}
-        mock_client.import_package.assert_called_once_with("TestPackage", "/tmp/test")
+        mock_client.import_package.assert_called_once_with(
+            "TestPackage", "/tmp/test", allow_class_removal=False
+        )
+
+    @patch("pharo_smalltalk_interop_mcp_server.core.get_pharo_client")
+    def test_interop_import_package_allowing_class_removal(self, mock_get_client):
+        """Test interop_import_package passes allow_class_removal to the client."""
+        mock_client = Mock()
+        mock_client.import_package.return_value = {"success": True, "result": "ok"}
+        mock_get_client.return_value = mock_client
+
+        interop_import_package("TestPackage", "/tmp/test", allow_class_removal=True)
+
+        mock_client.import_package.assert_called_once_with(
+            "TestPackage", "/tmp/test", allow_class_removal=True
+        )
 
     @patch("pharo_smalltalk_interop_mcp_server.core.get_pharo_client")
     def test_interop_run_package_test(self, mock_get_client):

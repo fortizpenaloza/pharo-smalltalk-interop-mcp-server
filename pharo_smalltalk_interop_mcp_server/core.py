@@ -25,7 +25,7 @@ class PharoClient:
         # Connect fast, but allow a long read: a legitimate operation can take
         # minutes on first touch, when caches are cold and the DB connection
         # is still being established.
-        self.read_timeout = float(os.getenv("PHARO_SIS_READ_TIMEOUT", "30"))
+        self.read_timeout = float(os.getenv("PHARO_SIS_READ_TIMEOUT", "600"))
         self.client = httpx.Client(
             timeout=httpx.Timeout(self.read_timeout, connect=5.0)
         )
@@ -127,9 +127,13 @@ class PharoClient:
         data = {"package_name": package_name, "path": path}
         return self._make_request("GET", "/export-package", data)
 
-    def import_package(self, package_name: str, path: str = "/tmp") -> dict[str, Any]:
+    def import_package(
+        self, package_name: str, path: str = "/tmp", allow_class_removal: bool = False
+    ) -> dict[str, Any]:
         """Import package from Tonel format."""
         data = {"package_name": package_name, "path": path}
+        if allow_class_removal:
+            data["allow_class_removal"] = "true"
         return self._make_request("GET", "/import-package", data)
 
     def run_package_test(self, package_name: str) -> dict[str, Any]:
@@ -286,10 +290,14 @@ def interop_export_package(package_name: str, path: str = "/tmp") -> dict[str, A
     return client.export_package(package_name, path)
 
 
-def interop_import_package(package_name: str, path: str = "/tmp") -> dict[str, Any]:
+def interop_import_package(
+    package_name: str, path: str = "/tmp", allow_class_removal: bool = False
+) -> dict[str, Any]:
     """Import package from specified path."""
     client = get_pharo_client()
-    return client.import_package(package_name, path)
+    return client.import_package(
+        package_name, path, allow_class_removal=allow_class_removal
+    )
 
 
 def interop_run_package_test(package_name: str) -> dict[str, Any]:

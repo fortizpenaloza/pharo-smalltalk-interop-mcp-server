@@ -360,6 +360,16 @@ def import_package(
     path: Annotated[
         str, Field(description="The path to the package file to import")
     ] = "/tmp",
+    allow_class_removal: Annotated[
+        bool,
+        Field(
+            description=(
+                "Let the load remove classes the image has and the tree does not "
+                "carry. Leave it false unless the removal is intended and named: "
+                "the image refuses such a load by default"
+            )
+        ),
+    ] = False,
 ) -> dict[str, Any]:
     """
     Import a package from specified path.
@@ -367,13 +377,19 @@ def import_package(
     Args:
         package_name: The name of the package to import
         path: The path to the package file to import (default: /tmp)
+        allow_class_removal: Let the load remove classes the tree does not carry
+            (default: False)
 
     Returns:
         dict: API response with success/error and result
-        - Success: {"success": True, "result": str} - result contains import success message
-        - Error: {"success": False, "error": str} - error contains error message
+        - Success: {"success": True, "result": dict} - result holds "message",
+          "envy_log" and "envy_error_lines", as the image answered them
+        - Error: {"success": False, "error": ...} - a load during which ENVY logged
+          error lines also keeps "result", and its "envy_error_lines" say why
     """
-    return interop_import_package(package_name, path)
+    return interop_import_package(
+        package_name, path, allow_class_removal=allow_class_removal
+    )
 
 
 @mcp.tool(

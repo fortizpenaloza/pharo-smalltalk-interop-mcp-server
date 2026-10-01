@@ -27,6 +27,7 @@ This project uses `uv` as the Python package manager. Prerequisites:
 You can configure the server using environment variables:
 
 - **`PHARO_SIS_PORT`**: Port number for PharoSmalltalkInteropServer (default: 8086)
+- **`PHARO_SIS_READ_TIMEOUT`**: Seconds to wait for a reply before giving up (default: 30). A timed-out request is not cancelled, and the image keeps running it
 
 ### Common Commands
 

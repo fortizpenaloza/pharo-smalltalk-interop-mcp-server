@@ -84,3 +84,33 @@ class TestMCPToolsIntegration:
 
         assert callable(main)
         # Don't actually call main() as it would start the server
+
+
+class TestImportPackageTool:
+    """Test the import_package tool forwards allow_class_removal."""
+
+    @patch("pharo_smalltalk_interop_mcp_server.server.interop_import_package")
+    def test_import_package_defaults_to_no_class_removal(self, mock_import):
+        """Test import_package asks for no removal unless told to."""
+        from pharo_smalltalk_interop_mcp_server.server import import_package
+
+        mock_import.return_value = {"success": True, "result": "ok"}
+
+        import_package(None, "TestPackage", "/tmp/test")
+
+        mock_import.assert_called_once_with(
+            "TestPackage", "/tmp/test", allow_class_removal=False
+        )
+
+    @patch("pharo_smalltalk_interop_mcp_server.server.interop_import_package")
+    def test_import_package_allowing_class_removal(self, mock_import):
+        """Test import_package forwards allow_class_removal=True."""
+        from pharo_smalltalk_interop_mcp_server.server import import_package
+
+        mock_import.return_value = {"success": True, "result": "ok"}
+
+        import_package(None, "TestPackage", "/tmp/test", allow_class_removal=True)
+
+        mock_import.assert_called_once_with(
+            "TestPackage", "/tmp/test", allow_class_removal=True
+        )
